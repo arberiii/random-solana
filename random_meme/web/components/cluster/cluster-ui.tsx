@@ -186,7 +186,7 @@ export function ClusterUiTable() {
                 </div>
               </td>
               <td className="space-x-2 whitespace-nowrap text-center">
-                <button
+                {/* <button
                   disabled={item?.active}
                   className="btn btn-xs btn-default btn-outline"
                   onClick={() => {
@@ -195,7 +195,7 @@ export function ClusterUiTable() {
                   }}
                 >
                   <IconTrash size={16} />
-                </button>
+                </button> */}
               </td>
             </tr>
           ))}

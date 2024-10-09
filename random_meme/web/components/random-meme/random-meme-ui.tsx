@@ -96,7 +96,7 @@ function RandomMemeCard({ account }: { account: PublicKey }) {
             >
               Increment
             </button>
-            <button
+            {/* <button
               className="btn btn-xs lg:btn-md btn-outline"
               onClick={() => {
                 const value = window.prompt(
@@ -115,7 +115,7 @@ function RandomMemeCard({ account }: { account: PublicKey }) {
               disabled={setMutation.isPending}
             >
               Set
-            </button>
+            </button> */}
             <button
               className="btn btn-xs lg:btn-md btn-outline"
               onClick={() => decrementMutation.mutateAsync()}
@@ -131,7 +131,7 @@ function RandomMemeCard({ account }: { account: PublicKey }) {
                 label={ellipsify(account.toString())}
               />
             </p>
-            <button
+            {/* <button
               className="btn btn-xs btn-secondary btn-outline"
               onClick={() => {
                 if (
@@ -146,7 +146,7 @@ function RandomMemeCard({ account }: { account: PublicKey }) {
               disabled={closeMutation.isPending}
             >
               Close
-            </button>
+            </button> */}
           </div>
         </div>
       </div>
