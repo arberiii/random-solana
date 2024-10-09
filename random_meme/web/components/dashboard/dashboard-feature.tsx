@@ -3,32 +3,92 @@
 import { AppHero } from '../ui/ui-layout';
 import { Wheel } from "react-custom-roulette";
 import {useState} from "react";
+import { coins } from "./coins";
 
-const links: { label: string; href: string }[] = [
-  { label: 'Solana Docs', href: 'https://docs.solana.com/' },
-  { label: 'Solana Faucet', href: 'https://faucet.solana.com/' },
-  { label: 'Solana Cookbook', href: 'https://solanacookbook.com/' },
-  { label: 'Solana Stack Overflow', href: 'https://solana.stackexchange.com/' },
-  {
-    label: 'Solana Developers GitHub',
-    href: 'https://github.com/solana-developers/',
-  },
-];
-const data = [
-  { option: "iPhone" },
-  { option: "Smart TV" },
-  { option: "Car" },
-  { option: "Hose" },
-  { option: "Computer" },
-  { option: "Travel" },
-  { option: "Free Store" },
-  { option: "Palabras cortas" },
-  { option: "Sin premio" }
-];
+function SpinResult({ memeCoin }: { memeCoin: any }) {
+  if (!memeCoin || !memeCoin.name || !memeCoin.iconUrl) {
+    console.error("Invalid memeCoin data:", memeCoin);
+    return null;
+  }
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      padding: '10px', 
+      borderRadius: '10px', 
+      backgroundColor: '#f0f8ff', 
+      boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)', 
+      margin: '10px', 
+      fontFamily: 'Arial, sans-serif', 
+      fontSize: '1.2em', 
+      color: '#333' 
+    }}>
+      <span style={{ marginRight: '10px', fontWeight: 'bold' }}>{memeCoin.name}</span>
+      <img 
+        src={memeCoin.iconUrl} 
+        alt={`${memeCoin.name} icon`} 
+        style={{ 
+          width: '40px', 
+          height: '40px', 
+          borderRadius: '50%', 
+          border: '2px solid #ddd' 
+        }} 
+      />
+    </div>
+  );
+}
+
 
 export default function DashboardFeature() {
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
+
+  const getTenRandomMemes = () => {
+    const randomMemes = [];
+    for (let i = 0; i < 10; i++) {
+      randomMemes.push(getRandomMeme());
+    }
+    return randomMemes;
+  }
+
+  const getRandomMeme = () => {
+    const randomIndex = Math.floor(Math.random() * coins.length);
+    return coins[randomIndex];
+  }
+
+  const shortenName = (name: string) => {
+    return name.length > 10 ? name.substring(0, 10) + "..." : name;
+  }
+
+  const getCurrentDateKey = () => {
+    const today = new Date();
+    return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  }
+
+  const [randomMemes, setRandomMemes] = useState(() => {
+    const storedDateKey = localStorage.getItem('dateKey');
+    const currentDateKey = getCurrentDateKey();
+    if (storedDateKey === currentDateKey) {
+      const storedMemes = localStorage.getItem('randomMemes');
+      return storedMemes ? JSON.parse(storedMemes) : getTenRandomMemes();
+    } else {
+      const newRandomMemes = getTenRandomMemes();
+      localStorage.setItem('dateKey', currentDateKey);
+      localStorage.setItem('randomMemes', JSON.stringify(newRandomMemes));
+      return newRandomMemes;
+    }
+  });
+
+  const data = randomMemes.map((meme: any) => ({
+    option: shortenName(meme.name),
+    image: {
+      uri: meme.iconUrl,
+      sizeMultiplier: 0.5,
+    },
+    color: meme.color,
+  }));
 
   const handleSpinClick = () => {
     const newPrizeNumber = Math.floor(Math.random() * data.length);
@@ -36,14 +96,12 @@ export default function DashboardFeature() {
     setMustSpin(true);
   };
 
-
   return (
     <div>
-      <AppHero title="gm" subtitle="Say hi to your new Solana dApp." />
-      <div className="max-w-xl mx-auto py-6 sm:px-6 lg:px-8 text-center">
+      <AppHero title="Meme Coin Madness" subtitle="Because picking a meme coin is totally a sound financial strategy!" />
+      <div className="max-w-xl mx-auto py-0 sm:px-0 lg:px-4 text-center">
 
-        <div className="space-y-2">
-          <p>Here are some helpful links to get you started.</p>
+        <div className="space-y-2 py-4">
           <>
             <Wheel
               mustStartSpinning={mustSpin}
@@ -77,24 +135,8 @@ export default function DashboardFeature() {
             </button>
             <br/>
             <br/>
-            {!mustSpin ? data[prizeNumber].option : "0"}
+            {!mustSpin ? <SpinResult memeCoin={randomMemes[prizeNumber]} /> : "0"}
           </>
-
-          <br/>
-          <br/>
-          <br/>
-          {links.map((link, index) => (
-            <div key={index}>
-              <a
-                href={link.href}
-                className="link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {link.label}
-              </a>
-            </div>
-          ))}
         </div>
       </div>
     </div>
