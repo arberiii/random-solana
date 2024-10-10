@@ -50,8 +50,11 @@ export default function DashboardFeature() {
   const getTenRandomMemes = (seed: number) => {
     const randomMemes = new Set();
     let i = 0;
-    while (randomMemes.size < 10 && i < coins.length * 2) { // Adding a safeguard to prevent infinite loop
-      randomMemes.add(getRandomMeme(seed + i));
+    while (randomMemes.size < 200 && i < coins.length * 2) { // Adding a safeguard to prevent infinite loop
+      const meme = getRandomMeme(seed + i);
+      if (meme?.name) {
+        randomMemes.add(meme);
+      }
       i++;
     }
     return Array.from(randomMemes);
@@ -78,11 +81,11 @@ export default function DashboardFeature() {
   });
 
   const data = randomMemes.map((meme: any) => ({
-    option: shortenName(meme.name),
-    image: {
-      uri: meme.iconUrl,
-      sizeMultiplier: 0.5,
-    },
+    // option: shortenName(meme.name),
+    // image: {
+    //   uri: meme.iconUrl,
+    //   sizeMultiplier: 0.5,
+    // },
   }));
 
   const backgroundColors = randomMemes.map((meme: any) => meme.color);
