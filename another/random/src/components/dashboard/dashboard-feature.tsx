@@ -48,11 +48,13 @@ export default function DashboardFeature() {
   const [prizeNumber, setPrizeNumber] = useState(0);
 
   const getTenRandomMemes = (seed: number) => {
-    const randomMemes = [];
-    for (let i = 0; i < 10; i++) {
-      randomMemes.push(getRandomMeme(seed + i));
+    const randomMemes = new Set();
+    let i = 0;
+    while (randomMemes.size < 10 && i < coins.length * 2) { // Adding a safeguard to prevent infinite loop
+      randomMemes.add(getRandomMeme(seed + i));
+      i++;
     }
-    return randomMemes;
+    return Array.from(randomMemes);
   }
 
   const getRandomMeme = (seed: number) => {
@@ -81,8 +83,9 @@ export default function DashboardFeature() {
       uri: meme.iconUrl,
       sizeMultiplier: 0.5,
     },
-    color: meme.color,
   }));
+
+  const backgroundColors = randomMemes.map((meme: any) => meme.color);
 
   const handleSpinClick = () => {
     const newPrizeNumber = Math.floor(Math.random() * data.length);
@@ -108,14 +111,7 @@ export default function DashboardFeature() {
               radiusLineWidth={1}
               fontSize={15}
               textColors={["#ffffff"]}
-              backgroundColors={[
-                "#F22B35",
-                "#F99533",
-                "#24CA69",
-                "#514E50",
-                "#46AEFF",
-                "#9145B7"
-              ]}
+              backgroundColors={backgroundColors}
               onStopSpinning={() => {
                 setMustSpin(false);
                 console.log(data[prizeNumber]);
