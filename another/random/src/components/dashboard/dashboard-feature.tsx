@@ -1,10 +1,14 @@
 'use client';
 
 import { AppHero } from '../ui/ui-layout';
-import {useState} from "react";
+import {useMemo, useState} from "react";
 import { coins } from "./coins";
+import { useParams } from 'next/navigation'
+
 
 import dynamic from 'next/dynamic';
+import { AccountButtons } from './actions';
+import { PublicKey } from '@solana/web3.js';
 const Wheel = dynamic(() => import('react-custom-roulette').then((mod) => mod.Wheel), { ssr: false, });
 
 function SpinResult({ memeCoin }: { memeCoin: any }) {
@@ -97,12 +101,28 @@ export default function DashboardFeature() {
     setMustSpin(true);
   };
 
+  const params = useParams()
+  const address = useMemo(() => {
+    if (!params.address) {
+      return "2WrpYicpvjrMTZMvhNF2kssxvKrtUdEtZsGPw6m1Fmbo"
+    }
+    try {
+      return new PublicKey(params.address)
+    } catch (e) {
+      console.log(`Invalid public key`, e)
+    }
+  }, [params])
+  if (!address) {
+    return <div>Error loading account</div>
+  }
+
   return (
     <div>
       <AppHero title="Meme Coin Madness" subtitle="Because picking a meme coin is totally a sound financial strategy!" />
       <div className="max-w-xl mx-auto py-0 sm:px-0 lg:px-4 text-center">
 
         <div className="space-y-2 py-4">
+          <AccountButtons address={address} />
           <>
             <Wheel
               mustStartSpinning={mustSpin}
