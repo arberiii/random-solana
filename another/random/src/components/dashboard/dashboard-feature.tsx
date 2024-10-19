@@ -1,7 +1,7 @@
 'use client';
 
 import { AppHero } from '../ui/ui-layout';
-import {useEffect, useMemo, useState} from "react";
+import {useEffect, useState} from "react";
 import { coins } from "./coins";
 
 
@@ -56,7 +56,6 @@ const getRandomMemes = (seed: number, size: number) => {
   }
   return Array.from(randomMemes);
 }
-
 const getRandomMeme = (seed: number) => {
   const randomIndex = Math.floor((Math.sin(seed) * 10000) % coins.length);
   return coins[Math.abs(randomIndex)];
@@ -69,8 +68,11 @@ export default function DashboardFeature() {
   const [memeCoin, setMemeCoin] = useState<MemeCoin | null>(null);
   const [showSendModal, setShowSendModal] = useState(false);
 
-  const seed = new Date().setHours(0, 0, 0, 0);
-  const randomMemes = getRandomMemes(seed, 200);
+  // this is necessary to close the modal 
+  const [randomMemes, setRandomMemes] = useState(() => {
+    const seed = new Date().setHours(0, 0, 0, 0);
+    return getRandomMemes(seed, 200);
+  });
 
   const data = randomMemes.map((meme: any) => ({
     // option: shortenName(meme.name),
@@ -87,7 +89,7 @@ export default function DashboardFeature() {
     const newPrizeNumber = Math.floor(Math.random() * data.length);
     setPrizeNumber(newPrizeNumber);
     setMustSpin(true);
-  };  
+  };
 
   useEffect(() => {
     if (prizeNumber !== null && !mustSpin) {
