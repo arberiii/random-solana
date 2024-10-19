@@ -105,7 +105,7 @@ export default function DashboardFeature() {
   const params = useParams()
   const address = useMemo(() => {
     if (!params.address) {
-      return "2WrpYicpvjrMTZMvhNF2kssxvKrtUdEtZsGPw6m1Fmbo"
+      console.log("No address provided")
     }
     try {
       return new PublicKey(params.address)
@@ -113,9 +113,7 @@ export default function DashboardFeature() {
       console.log(`Invalid public key`, e)
     }
   }, [params])
-  if (!address) {
-    return <div>Error loading account</div>
-  }
+  
 
   useEffect(() => {
     if (prizeNumber !== null && !mustSpin) {
@@ -123,6 +121,10 @@ export default function DashboardFeature() {
       setShowSendModal(true);
     }
   }, [randomMemes, prizeNumber, mustSpin]);
+
+  if (!address) {
+    return <div>Error loading account</div>
+  }
 
   return (
     <div>
@@ -156,7 +158,7 @@ export default function DashboardFeature() {
             </button>
             <br/>
             <br/>
-            {!mustSpin && prizeNumber !== null ? <SpinResult memeCoin={randomMemes[prizeNumber]} /> : null}
+            {!mustSpin && prizeNumber !== null ? <SpinResult memeCoin={randomMemes[prizeNumber] as MemeCoin} /> : null}
           </>
         </div>
       </div>
