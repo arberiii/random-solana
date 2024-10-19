@@ -1,7 +1,7 @@
 'use client';
 
 import { AppHero } from '../ui/ui-layout';
-import {useMemo, useState} from "react";
+import {useEffect, useMemo, useState} from "react";
 import { coins } from "./coins";
 import { useParams } from 'next/navigation'
 
@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic';
 import { AccountButtons } from './actions';
 import { PublicKey } from '@solana/web3.js';
+import { MemeCoin } from './types';
 const Wheel = dynamic(() => import('react-custom-roulette').then((mod) => mod.Wheel), { ssr: false, });
 
 function SpinResult({ memeCoin }: { memeCoin: any }) {
@@ -50,7 +51,7 @@ function SpinResult({ memeCoin }: { memeCoin: any }) {
 export default function DashboardFeature() {
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
-
+  const [memeCoin, setMemeCoin] = useState<MemeCoin | null>(null);
   const getTenRandomMemes = (seed: number) => {
     const randomMemes = new Set();
     let i = 0;
@@ -116,13 +117,17 @@ export default function DashboardFeature() {
     return <div>Error loading account</div>
   }
 
+  useEffect(() => {
+    setMemeCoin(randomMemes[prizeNumber] as MemeCoin)
+  }, [randomMemes, prizeNumber])
+
   return (
     <div>
       <AppHero title="Meme Coin Madness" subtitle="Because picking a meme coin is totally a sound financial strategy!" />
       <div className="max-w-xl mx-auto py-0 sm:px-0 lg:px-4 text-center">
 
         <div className="space-y-2 py-4">
-          <AccountButtons address={address} />
+          {memeCoin && <AccountButtons address={address} memeCoin={memeCoin} />}
           <>
             <Wheel
               mustStartSpinning={mustSpin}

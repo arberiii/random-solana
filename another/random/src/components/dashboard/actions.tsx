@@ -1,10 +1,10 @@
 'use client'
 
 import { useWallet } from '@solana/wallet-adapter-react'
-import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js'
+import { LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from '@solana/web3.js'
 import { IconRefresh } from '@tabler/icons-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { AppModal, ellipsify } from '../ui/ui-layout'
 import { useCluster } from '../cluster/cluster-data-access'
 import { ExplorerLink } from '../cluster/cluster-ui'
@@ -15,59 +15,18 @@ import {
   useRequestAirdrop,
   useTransferSol,
 } from '../account/account-data-access'
+import { Wallet } from '@project-serum/anchor'
+import { MemeCoin } from './types'
+import debounce from 'lodash/debounce'
 
-export function AccountBalance({ address }: { address: PublicKey }) {
-  const query = useGetBalance({ address })
-
-  return (
-    <div>
-      <h1 className="text-5xl font-bold cursor-pointer" onClick={() => query.refetch()}>
-        {query.data ? <BalanceSol balance={query.data} /> : '...'} SOL
-      </h1>
-    </div>
-  )
-}
-export function AccountChecker() {
-  const { publicKey } = useWallet()
-  if (!publicKey) {
-    return null
-  }
-  return <AccountBalanceCheck address={publicKey} />
-}
-export function AccountBalanceCheck({ address }: { address: PublicKey }) {
-  const { cluster } = useCluster()
-  const mutation = useRequestAirdrop({ address })
-  const query = useGetBalance({ address })
-
-  if (query.isLoading) {
-    return null
-  }
-  if (query.isError || !query.data) {
-    return (
-      <div className="alert alert-warning text-warning-content/80 rounded-none flex justify-center">
-        <span>
-          You are connected to <strong>{cluster.name}</strong> but your account is not found on this cluster.
-        </span>
-        <button
-          className="btn btn-xs btn-neutral"
-          onClick={() => mutation.mutateAsync(1).catch((err) => console.log(err))}
-        >
-          Request Airdrop
-        </button>
-      </div>
-    )
-  }
-  return null
-}
-
-export function AccountButtons({ address }: { address: PublicKey }) {
+export function AccountButtons({ address, memeCoin }: { address: PublicKey, memeCoin: MemeCoin }) {
   const wallet = useWallet()
   const { cluster } = useCluster()
   const [showSendModal, setShowSendModal] = useState(false)
 
   return (
     <div>
-      <ModalSend address={address} show={showSendModal} hide={() => setShowSendModal(false)} />
+      <ModalSend address={address} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
       <div className="space-x-2">
         <button
           disabled={wallet.publicKey?.toString() !== address.toString()}
@@ -81,258 +40,143 @@ export function AccountButtons({ address }: { address: PublicKey }) {
   )
 }
 
-export function AccountTokens({ address }: { address: PublicKey }) {
-  const [showAll, setShowAll] = useState(false)
-  const query = useGetTokenAccounts({ address })
-  const client = useQueryClient()
-  const items = useMemo(() => {
-    if (showAll) return query.data
-    return query.data?.slice(0, 5)
-  }, [query.data, showAll])
-
-  return (
-    <div className="space-y-2">
-      <div className="justify-between">
-        <div className="flex justify-between">
-          <h2 className="text-2xl font-bold">Token Accounts</h2>
-          <div className="space-x-2">
-            {query.isLoading ? (
-              <span className="loading loading-spinner"></span>
-            ) : (
-              <button
-                className="btn btn-sm btn-outline"
-                onClick={async () => {
-                  await query.refetch()
-                  await client.invalidateQueries({
-                    queryKey: ['getTokenAccountBalance'],
-                  })
-                }}
-              >
-                <IconRefresh size={16} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      {query.isError && <pre className="alert alert-error">Error: {query.error?.message.toString()}</pre>}
-      {query.isSuccess && (
-        <div>
-          {query.data.length === 0 ? (
-            <div>No token accounts found.</div>
-          ) : (
-            <table className="table border-4 rounded-lg border-separate border-base-300">
-              <thead>
-                <tr>
-                  <th>Public Key</th>
-                  <th>Mint</th>
-                  <th className="text-right">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items?.map(({ account, pubkey }) => (
-                  <tr key={pubkey.toString()}>
-                    <td>
-                      <div className="flex space-x-2">
-                        <span className="font-mono">
-                          <ExplorerLink label={ellipsify(pubkey.toString())} path={`account/${pubkey.toString()}`} />
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="flex space-x-2">
-                        <span className="font-mono">
-                          <ExplorerLink
-                            label={ellipsify(account.data.parsed.info.mint)}
-                            path={`account/${account.data.parsed.info.mint.toString()}`}
-                          />
-                        </span>
-                      </div>
-                    </td>
-                    <td className="text-right">
-                      <span className="font-mono">{account.data.parsed.info.tokenAmount.uiAmount}</span>
-                    </td>
-                  </tr>
-                ))}
-
-                {(query.data?.length ?? 0) > 5 && (
-                  <tr>
-                    <td colSpan={4} className="text-center">
-                      <button className="btn btn-xs btn-outline" onClick={() => setShowAll(!showAll)}>
-                        {showAll ? 'Show Less' : 'Show All'}
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  )
+const getFirstSolContractAddress = (memeCoin: MemeCoin) => {
+  // iterate through contract addresses and return the first one that starts with solana/
+  for (const address of memeCoin.contractAddresses) {
+    if (address.startsWith('solana/')) {
+      return address.split('solana/')[1]
+    }
+  }
+  return null
 }
 
-export function AccountTransactions({ address }: { address: PublicKey }) {
-  const query = useGetSignatures({ address })
-  const [showAll, setShowAll] = useState(false)
 
-  const items = useMemo(() => {
-    if (showAll) return query.data
-    return query.data?.slice(0, 5)
-  }, [query.data, showAll])
+function ModalSend({ hide, show, address, memeCoin }: { hide: () => void; show: boolean; address: PublicKey, memeCoin: MemeCoin }) {
+  const [firstSolContractAddress, setFirstSolContractAddress] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setFirstSolContractAddress(getFirstSolContractAddress(memeCoin));
+  }, [memeCoin]);
 
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between">
-        <h2 className="text-2xl font-bold">Transaction History</h2>
-        <div className="space-x-2">
-          {query.isLoading ? (
-            <span className="loading loading-spinner"></span>
-          ) : (
-            <button className="btn btn-sm btn-outline" onClick={() => query.refetch()}>
-              <IconRefresh size={16} />
-            </button>
-          )}
-        </div>
-      </div>
-      {query.isError && <pre className="alert alert-error">Error: {query.error?.message.toString()}</pre>}
-      {query.isSuccess && (
-        <div>
-          {query.data.length === 0 ? (
-            <div>No transactions found.</div>
-          ) : (
-            <table className="table border-4 rounded-lg border-separate border-base-300">
-              <thead>
-                <tr>
-                  <th>Signature</th>
-                  <th className="text-right">Slot</th>
-                  <th>Block Time</th>
-                  <th className="text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items?.map((item) => (
-                  <tr key={item.signature}>
-                    <th className="font-mono">
-                      <ExplorerLink path={`tx/${item.signature}`} label={ellipsify(item.signature, 8)} />
-                    </th>
-                    <td className="font-mono text-right">
-                      <ExplorerLink path={`block/${item.slot}`} label={item.slot.toString()} />
-                    </td>
-                    <td>{new Date((item.blockTime ?? 0) * 1000).toISOString()}</td>
-                    <td className="text-right">
-                      {item.err ? (
-                        <div className="badge badge-error" title={JSON.stringify(item.err)}>
-                          Failed
-                        </div>
-                      ) : (
-                        <div className="badge badge-success">Success</div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {(query.data?.length ?? 0) > 5 && (
-                  <tr>
-                    <td colSpan={4} className="text-center">
-                      <button className="btn btn-xs btn-outline" onClick={() => setShowAll(!showAll)}>
-                        {showAll ? 'Show Less' : 'Show All'}
-                      </button>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function BalanceSol({ balance }: { balance: number }) {
-  return <span>{Math.round((balance / LAMPORTS_PER_SOL) * 100000) / 100000}</span>
-}
-
-function ModalReceive({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
-  return (
-    <AppModal title="Receive" hide={hide} show={show}>
-      <p>Receive assets by sending them to your public key:</p>
-      <code>{address.toString()}</code>
-    </AppModal>
-  )
-}
-
-function ModalAirdrop({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
-  const mutation = useRequestAirdrop({ address })
-  const [amount, setAmount] = useState('2')
-
-  return (
-    <AppModal
-      hide={hide}
-      show={show}
-      title="Airdrop"
-      submitDisabled={!amount || mutation.isPending}
-      submitLabel="Request Airdrop"
-      submit={() => mutation.mutateAsync(parseFloat(amount)).then(() => hide())}
-    >
-      <input
-        disabled={mutation.isPending}
-        type="number"
-        step="any"
-        min="1"
-        placeholder="Amount"
-        className="input input-bordered w-full"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
-    </AppModal>
-  )
-}
-
-function ModalSend({ hide, show, address }: { hide: () => void; show: boolean; address: PublicKey }) {
   const wallet = useWallet()
   const mutation = useTransferSol({ address })
-  const [destination, setDestination] = useState('')
-  const [amount, setAmount] = useState('1')
+  const [sendAmount, setSendAmount] = useState('0.1')
+  const [receiveAmount, setReceiveAmount] = useState('')
+  const [inputMint, setInputMint] = useState(new PublicKey('So11111111111111111111111111111111111111112'));
+  const [outputMint, setOutputMint] = useState<PublicKey | null>(null);
+  const SOL_MULTIPLIER = 1000000000;
+  const [quoteResponse, setQuoteResponse] = useState<any>(null)
+
+  useEffect(() => {
+    if (firstSolContractAddress) {
+      setOutputMint(new PublicKey(firstSolContractAddress));
+    }
+  }, [firstSolContractAddress]);
+
+  const updateQuote = useCallback(
+    debounce(async (amount: number, inMint: PublicKey, outMint: PublicKey) => {
+      if (!outMint) return;
+      const quoteResponse = await getQuote(amount * SOL_MULTIPLIER, inMint, outMint)
+      setQuoteResponse(quoteResponse)
+      const receiveAmount = parseFloat(quoteResponse.outAmount) / SOL_MULTIPLIER
+      setReceiveAmount(receiveAmount.toFixed(9))
+    }, 500),
+    []
+  )
+
+  useEffect(() => {
+    if (outputMint) {
+      updateQuote(parseFloat(sendAmount), inputMint, outputMint)
+    }
+  }, [sendAmount, inputMint, outputMint, updateQuote])
 
   if (!address || !wallet.sendTransaction) {
     return <div>Wallet not connected</div>
+  }
+
+  const handleSwap = async () => {
+    if (!wallet.publicKey || !wallet.wallet || !outputMint) {
+      console.error('Wallet not connected or output mint not set')
+      return
+    }
+    const swapResponse = await swap(wallet.publicKey, parseFloat(sendAmount) * SOL_MULTIPLIER, inputMint, outputMint)
+    const transaction = getSwapTransaction(swapResponse.swapTransaction, wallet);
+    console.log(transaction);
+    // Implement the actual swap logic here
+  }
+
+  const handleSendAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSendAmount(e.target.value)
   }
 
   return (
     <AppModal
       hide={hide}
       show={show}
-      title="Send"
-      submitDisabled={!destination || !amount || mutation.isPending}
-      submitLabel="Send"
+      title={`Send ${memeCoin.name}`}
+      submitDisabled={!sendAmount || mutation.isPending || !outputMint}
+      submitLabel="Swap"
       submit={() => {
-        mutation
-          .mutateAsync({
-            destination: new PublicKey(destination),
-            amount: parseFloat(amount),
-          })
-          .then(() => hide())
+        handleSwap();
       }}
     >
+      <label className="block text-sm font-medium text-gray-700">You send this many SOL</label>
       <input
         disabled={mutation.isPending}
         type="text"
-        placeholder="Destination"
+        placeholder="Send Amount"
         className="input input-bordered w-full"
-        value={destination}
-        onChange={(e) => setDestination(e.target.value)}
+        value={sendAmount}
+        onChange={(e) => handleSendAmountChange(e)}
       />
+      <label className="block text-sm font-medium text-gray-700">You receive this many {memeCoin.name}</label>
       <input
-        disabled={mutation.isPending}
+        disabled={false}
         type="number"
         step="any"
         min="1"
-        placeholder="Amount"
+        placeholder="Receive Amount"
         className="input input-bordered w-full"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
+        value={receiveAmount}
+        onChange={(e) => setReceiveAmount(e.target.value)}
       />
     </AppModal>
   )
+}
+
+async function getQuote(amount: number, inputMint: PublicKey, outputMint: PublicKey) {
+  const quoteResponse = await (
+    await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toString()}&outputMint=${outputMint.toString()}&amount=${amount}&slippageBps=50`)
+  ).json();
+  return quoteResponse;
+}
+
+async function swap(walletPublicKey: PublicKey, amount: number, inputMint: PublicKey, outputMint: PublicKey) {
+  const quoteResponse = await getQuote(amount, inputMint, outputMint);
+  console.log(quoteResponse);
+  console.log(walletPublicKey.toString());
+  const swapResponse = await (
+    await fetch('https://quote-api.jup.ag/v6/swap', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        quoteResponse,
+        userPublicKey: walletPublicKey.toString(),
+        wrapAndUnwrapSol: true,
+      }),
+    })
+  ).json();
+  return swapResponse;
+}
+
+function getSwapTransaction(swapTransaction: any, wallet: any) {
+  const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
+  var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+  console.log(transaction);
+
+  wallet.signTransaction(transaction);
+
+  return transaction;
 }
