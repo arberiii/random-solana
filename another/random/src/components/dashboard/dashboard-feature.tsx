@@ -52,12 +52,13 @@ export default function DashboardFeature() {
   const [mustSpin, setMustSpin] = useState(false);
   const [prizeNumber, setPrizeNumber] = useState(0);
   const [memeCoin, setMemeCoin] = useState<MemeCoin | null>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
   const getTenRandomMemes = (seed: number) => {
     const randomMemes = new Set();
     let i = 0;
-    while (randomMemes.size < 14 && i < coins.length * 2) { // Adding a safeguard to prevent infinite loop
+    while (randomMemes.size < 200 && i < coins.length * 2) { // Adding a safeguard to prevent infinite loop
       const meme = getRandomMeme(seed + i);
-      if (meme.name) {
+      if (meme?.name) {
         randomMemes.add(meme);
       }
       i++;
@@ -86,12 +87,12 @@ export default function DashboardFeature() {
   });
 
   const data = randomMemes.map((meme: any) => ({
-    option: shortenName(meme.name),
-    image: {
-      uri: meme.iconUrl,
-      sizeMultiplier: 0.5,
-      offsetY: 200,
-    },
+    // option: shortenName(meme.name),
+    // image: {
+    //   uri: meme.iconUrl,
+    //   sizeMultiplier: 0.5,
+    //   offsetY: 200,
+    // },
   }));
 
   const backgroundColors = randomMemes.map((meme: any) => meme.color);
@@ -119,7 +120,10 @@ export default function DashboardFeature() {
 
   useEffect(() => {
     setMemeCoin(randomMemes[prizeNumber] as MemeCoin)
-  }, [randomMemes, prizeNumber])
+    if (!mustSpin) {
+      setShowSendModal(true);
+    }
+  }, [randomMemes, prizeNumber, mustSpin])
 
   return (
     <div>
@@ -127,7 +131,7 @@ export default function DashboardFeature() {
       <div className="max-w-xl mx-auto py-0 sm:px-0 lg:px-4 text-center">
 
         <div className="space-y-2 py-4">
-          {memeCoin && <AccountButtons address={address} memeCoin={memeCoin} />}
+          {memeCoin && <AccountButtons address={address} memeCoin={memeCoin} showSendModal={showSendModal} setShowSendModal={setShowSendModal} />}
           <>
             <Wheel
               mustStartSpinning={mustSpin}

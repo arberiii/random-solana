@@ -19,15 +19,14 @@ import { Wallet } from '@project-serum/anchor'
 import { MemeCoin } from './types'
 import debounce from 'lodash/debounce'
 
-export function AccountButtons({ address, memeCoin }: { address: PublicKey, memeCoin: MemeCoin }) {
+export function AccountButtons({ address, memeCoin, showSendModal, setShowSendModal }: { address: PublicKey, memeCoin: MemeCoin, showSendModal: boolean, setShowSendModal: (show: boolean) => void }) {
   const wallet = useWallet()
   const { cluster } = useCluster()
-  const [showSendModal, setShowSendModal] = useState(false)
 
   return (
     <div>
       <ModalSend address={address} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
-      <div className="space-x-2">
+      {/* <div className="space-x-2">
         <button
           disabled={wallet.publicKey?.toString() !== address.toString()}
           className="btn btn-xs lg:btn-md btn-outline"
@@ -35,7 +34,7 @@ export function AccountButtons({ address, memeCoin }: { address: PublicKey, meme
         >
           Send
         </button>
-      </div>
+      </div> */}
     </div>
   )
 }
