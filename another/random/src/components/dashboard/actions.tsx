@@ -1,31 +1,26 @@
 'use client'
 
 import { useWallet } from '@solana/wallet-adapter-react'
-import { LAMPORTS_PER_SOL, PublicKey, VersionedTransaction } from '@solana/web3.js'
-import { IconRefresh } from '@tabler/icons-react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState, useCallback } from 'react'
-import { AppModal, ellipsify } from '../ui/ui-layout'
-import { useCluster } from '../cluster/cluster-data-access'
-import { ExplorerLink } from '../cluster/cluster-ui'
+import { PublicKey, VersionedTransaction } from '@solana/web3.js'
+import { useEffect, useState, useCallback } from 'react'
+import { AppModal } from '../ui/ui-layout'
 import {
-  useGetBalance,
-  useGetSignatures,
-  useGetTokenAccounts,
-  useRequestAirdrop,
   useTransferSol,
 } from '../account/account-data-access'
-import { Wallet } from '@project-serum/anchor'
 import { MemeCoin } from './types'
 import debounce from 'lodash/debounce'
+import { getQuote, getSwapTransaction, swap } from './jup'
 
-export function AccountButtons({ address, memeCoin, showSendModal, setShowSendModal }: { address: PublicKey, memeCoin: MemeCoin, showSendModal: boolean, setShowSendModal: (show: boolean) => void }) {
+export function AccountButtons({ address, memeCoin, showSendModal, setShowSendModal }: { address?: PublicKey, memeCoin: MemeCoin, showSendModal: boolean, setShowSendModal: (show: boolean) => void }) {
   const wallet = useWallet()
-  const { cluster } = useCluster()
+  const publicKey = wallet.publicKey;
+  if (!publicKey) {
+    return <div>Wallet not connected</div>
+  }
 
   return (
     <div>
-      <ModalSend address={address} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
+      <ModalSend address={publicKey} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
       {/* <div className="space-x-2">
         <button
           disabled={wallet.publicKey?.toString() !== address.toString()}
@@ -100,8 +95,6 @@ function ModalSend({ hide, show, address, memeCoin }: { hide: () => void; show: 
     }
     const swapResponse = await swap(wallet.publicKey, parseFloat(sendAmount) * SOL_MULTIPLIER, inputMint, outputMint)
     const transaction = getSwapTransaction(swapResponse.swapTransaction, wallet);
-    console.log(transaction);
-    // Implement the actual swap logic here
   }
 
   const handleSendAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,39 +136,4 @@ function ModalSend({ hide, show, address, memeCoin }: { hide: () => void; show: 
   )
 }
 
-async function getQuote(amount: number, inputMint: PublicKey, outputMint: PublicKey) {
-  const quoteResponse = await (
-    await fetch(`https://quote-api.jup.ag/v6/quote?inputMint=${inputMint.toString()}&outputMint=${outputMint.toString()}&amount=${amount}&slippageBps=50`)
-  ).json();
-  return quoteResponse;
-}
 
-async function swap(walletPublicKey: PublicKey, amount: number, inputMint: PublicKey, outputMint: PublicKey) {
-  const quoteResponse = await getQuote(amount, inputMint, outputMint);
-  console.log(quoteResponse);
-  console.log(walletPublicKey.toString());
-  const swapResponse = await (
-    await fetch('https://quote-api.jup.ag/v6/swap', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        quoteResponse,
-        userPublicKey: walletPublicKey.toString(),
-        wrapAndUnwrapSol: true,
-      }),
-    })
-  ).json();
-  return swapResponse;
-}
-
-function getSwapTransaction(swapTransaction: any, wallet: any) {
-  const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
-  var transaction = VersionedTransaction.deserialize(swapTransactionBuf);
-  console.log(transaction);
-
-  wallet.signTransaction(transaction);
-
-  return transaction;
-}
