@@ -12,9 +12,8 @@ import { PublicKey } from '@solana/web3.js';
 import { MemeCoin } from './types';
 const Wheel = dynamic(() => import('react-custom-roulette').then((mod) => mod.Wheel), { ssr: false, });
 
-function SpinResult({ memeCoin }: { memeCoin: any }) {
+function SpinResult({ memeCoin }: { memeCoin: MemeCoin | null }) {
   if (!memeCoin || !memeCoin.name || !memeCoin.iconUrl) {
-    console.error("Invalid memeCoin data:", memeCoin);
     return null;
   }
 
@@ -50,7 +49,7 @@ function SpinResult({ memeCoin }: { memeCoin: any }) {
 
 export default function DashboardFeature() {
   const [mustSpin, setMustSpin] = useState(false);
-  const [prizeNumber, setPrizeNumber] = useState(0);
+  const [prizeNumber, setPrizeNumber] = useState<number | null>(null);
   const [memeCoin, setMemeCoin] = useState<MemeCoin | null>(null);
   const [showSendModal, setShowSendModal] = useState(false);
   const getTenRandomMemes = (seed: number) => {
@@ -119,11 +118,11 @@ export default function DashboardFeature() {
   }
 
   useEffect(() => {
-    setMemeCoin(randomMemes[prizeNumber] as MemeCoin)
-    if (!mustSpin) {
+    if (prizeNumber !== null && !mustSpin) {
+      setMemeCoin(randomMemes[prizeNumber] as MemeCoin);
       setShowSendModal(true);
     }
-  }, [randomMemes, prizeNumber, mustSpin])
+  }, [randomMemes, prizeNumber, mustSpin]);
 
   return (
     <div>
@@ -135,7 +134,7 @@ export default function DashboardFeature() {
           <>
             <Wheel
               mustStartSpinning={mustSpin}
-              prizeNumber={prizeNumber}
+              prizeNumber={prizeNumber || 0}
               data={data}
               outerBorderColor={"#f2f2f2"}
               outerBorderWidth={10}
@@ -147,7 +146,6 @@ export default function DashboardFeature() {
               backgroundColors={backgroundColors}
               onStopSpinning={() => {
                 setMustSpin(false);
-                console.log(data[prizeNumber]);
               }}
             />
             <button
@@ -158,7 +156,7 @@ export default function DashboardFeature() {
             </button>
             <br/>
             <br/>
-            {!mustSpin ? <SpinResult memeCoin={randomMemes[prizeNumber]} /> : "0"}
+            {!mustSpin && prizeNumber !== null ? <SpinResult memeCoin={randomMemes[prizeNumber]} /> : null}
           </>
         </div>
       </div>
