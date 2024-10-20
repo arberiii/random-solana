@@ -4,10 +4,11 @@ import { AppHero } from '../ui/ui-layout';
 import {useEffect, useState} from "react";
 import { coins } from "./coins";
 
-
+import "@jup-ag/terminal/css";
 import dynamic from 'next/dynamic';
 import { AccountButtons } from './actions';
 import { MemeCoin } from './types';
+import { useWallet } from '@solana/wallet-adapter-react';
 const Wheel = dynamic(() => import('react-custom-roulette').then((mod) => mod.Wheel), { ssr: false, });
 
 function SpinResult({ memeCoin }: { memeCoin: MemeCoin | null }) {
@@ -102,7 +103,6 @@ export default function DashboardFeature() {
     <div>
       <AppHero title="Meme Coin Madness" subtitle="Because picking a meme coin is totally a sound financial strategy!" />
       <div className="max-w-xl mx-auto py-0 sm:px-0 lg:px-4 text-center">
-
         <div className="space-y-2 py-4">
           {memeCoin && <AccountButtons memeCoin={memeCoin} showSendModal={showSendModal} setShowSendModal={setShowSendModal} />}
           <>

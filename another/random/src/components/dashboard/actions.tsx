@@ -20,7 +20,7 @@ export function AccountButtons({ address, memeCoin, showSendModal, setShowSendMo
 
   return (
     <div>
-      <ModalSend address={publicKey} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
+      <ModalSendFork address={publicKey} show={showSendModal} hide={() => setShowSendModal(false)} memeCoin={memeCoin} />
       {/* <div className="space-x-2">
         <button
           disabled={wallet.publicKey?.toString() !== address.toString()}
@@ -41,7 +41,7 @@ const getFirstSolContractAddress = (memeCoin: MemeCoin) => {
       return address.split('solana/')[1]
     }
   }
-  return null
+  return ""
 }
 
 
@@ -136,4 +136,59 @@ function ModalSend({ hide, show, address, memeCoin }: { hide: () => void; show: 
   )
 }
 
+function ModalSendFork({ hide, show, address, memeCoin }: { hide: () => void; show: boolean; address: PublicKey, memeCoin: MemeCoin }) {
+  const [firstSolContractAddress, setFirstSolContractAddress] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setFirstSolContractAddress(getFirstSolContractAddress(memeCoin));
+  }, [memeCoin]);
+
+  const wallet = useWallet()
+  const [inputMint, setInputMint] = useState(new PublicKey('So11111111111111111111111111111111111111112'));
+  const [outputMint, setOutputMint] = useState<PublicKey | null>(null);
+
+  useEffect(() => {
+    if (firstSolContractAddress) {
+      setOutputMint(new PublicKey(firstSolContractAddress));
+    }
+  }, [firstSolContractAddress]);
+
+  return (
+    <AppModal
+      hide={hide}
+      show={show}
+      title={`Send ${memeCoin.name}`}
+      submitDisabled={true}
+      submitLabel=""
+      submit={() => {
+        
+      }}
+    >
+      {firstSolContractAddress && <JupTerminal contractAddress={firstSolContractAddress} />}
+    </AppModal>
+  )
+}
+
+const JupTerminal = ({contractAddress}: {contractAddress: string}) => {
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("@jup-ag/terminal").then((mod) => {
+        const init = mod.init;
+        init({
+          displayMode: "integrated",
+          integratedTargetId: "integrated-terminal",
+          endpoint: "https://mainnet.helius-rpc.com/?api-key=cbbe5e2b-8ce2-4dce-9644-eb4ca17bb841",
+          formProps: {
+            initialInputMint: "So11111111111111111111111111111111111111112",
+            initialOutputMint: contractAddress,
+            fixedInputMint: true,
+            fixedOutputMint: true,
+            initialAmount: "10000",
+          },
+        });
+      });
+      }
+    }, []);
+  return <div id="integrated-terminal" style={{width: '100%', height: '500px'}}></div>
+}
 
