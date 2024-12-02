@@ -9,9 +9,11 @@ import toast, {Toaster} from 'react-hot-toast'
 import {AccountChecker} from '../account/account-ui'
 import {ClusterChecker, ClusterUiSelect, ExplorerLink} from '../cluster/cluster-ui'
 import {WalletButton} from '../solana/solana-provider'
+import { useSidebarContext } from '../dashboard/SidebarContext';
 
 export function UiLayout({ children, links }: { children: ReactNode; links: { label: string; path: string }[] }) {
   const pathname = usePathname()
+  const { isOpen } = useSidebarContext();
 
   return (
     <div className="h-full flex flex-col">
@@ -30,7 +32,16 @@ export function UiLayout({ children, links }: { children: ReactNode; links: { la
             ))}
           </ul> */}
         </div>
-        <div className="flex-none space-x-2">
+        <div 
+          className="flex-none space-x-2 transition-all duration-300" 
+          style={{ 
+            marginRight: pathname.includes('dashboard') 
+              ? (isOpen ? '288px' : '48px') 
+              : '24px',
+            position: 'relative',
+            zIndex: 20
+          }}
+        >
           <WalletButton />
         </div>
       </div>
